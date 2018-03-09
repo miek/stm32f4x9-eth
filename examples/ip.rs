@@ -31,7 +31,7 @@ use smoltcp::time::{Duration, Instant};
 use smoltcp::wire::{EthernetAddress, IpAddress, IpCidr,
                     Ipv4Address};
 use smoltcp::iface::{NeighborCache, EthernetInterfaceBuilder};
-use smoltcp::socket::{SocketSet, TcpSocket, TcpSocketBuffer};
+use smoltcp::socket::{AnySocket, SocketSet, TcpSocket, TcpSocketBuffer};
 use alloc::btree_map::BTreeMap;
 use log::{Record, Level, Metadata, LevelFilter};
 
@@ -117,11 +117,13 @@ fn main() {
         .finalize();
 
     let mut sockets = SocketSet::new(vec![]);
-    let server_socket = TcpSocket::new(
-        TcpSocketBuffer::new(vec![0; 2048]),
-        TcpSocketBuffer::new(vec![0; 2048])
-    );
-    let server_handle = sockets.add(server_socket);
+    for _ in 0..20 {
+        let server_socket = TcpSocket::new(
+            TcpSocketBuffer::new(vec![0; 64]),
+            TcpSocketBuffer::new(vec![0; 2048])
+        );
+        sockets.add(server_socket);
+    }
 
     loop {
         let time: u64 = cortex_m::interrupt::free(|cs| {
@@ -130,27 +132,33 @@ fn main() {
         });
         match iface.poll(&mut sockets, Instant::from_millis(time as i64)) {
             Ok(true) => {
-                let mut socket = sockets.get::<TcpSocket>(server_handle);
-                if !socket.is_open() {
-                    socket.listen(80)
-                        .or_else(|e| {
-                            writeln!(stdout, "TCP listen error: {:?}", e)
-                        })
-                        .unwrap();
-                    socket.set_timeout(Some(Duration::from_millis(500)));
-                }
+                for mut s in sockets.iter_mut() {
+                    match TcpSocket::downcast(s) {
+                        Some(mut socket) => {
+                            if !socket.is_open() {
+                                socket.listen(80)
+                                    .or_else(|e| {
+                                        writeln!(stdout, "TCP listen error: {:?}", e)
+                                    })
+                                    .unwrap();
+                                socket.set_timeout(Some(Duration::from_millis(500)));
+                            }
 
-                if socket.can_send() {
-                    p.GPIOB.odr.write(|w| w.odr7().set_bit());
-                    write!(socket, r#"<html>hello from mike's microcontroller<br />i am running rust and serving you this page :^)<br /><img src="https://i.imgur.com/XF94Hgv.jpg" /><br /><br />Source code: <a href="https://github.com/astro/stm32f4x9-eth">https://github.com/astro/stm32f4x9-eth</a></html>"#)
-                        .map(|_| {
-                            socket.close();
-                        })
-                        .or_else(|e| {
-                            writeln!(stdout, "TCP send error: {:?}", e)
-                        })
-                        .unwrap();
-                    p.GPIOB.odr.write(|w| w.odr7().clear_bit());
+                            if socket.can_send() {
+                                p.GPIOB.odr.write(|w| w.odr7().set_bit());
+                                write!(socket, r#"<html>hello from mike's microcontroller<br />i am running rust and serving you this page :^)<br /><img src="https://i.imgur.com/XF94Hgv.jpg" /><br /><br />Source code: <a href="https://github.com/astro/stm32f4x9-eth">https://github.com/astro/stm32f4x9-eth</a></html>"#)
+                                    .map(|_| {
+                                        socket.close();
+                                    })
+                                    .or_else(|e| {
+                                        writeln!(stdout, "TCP send error: {:?}", e)
+                                    })
+                                    .unwrap();
+                                p.GPIOB.odr.write(|w| w.odr7().clear_bit());
+                            }
+                        },
+                        None => (),
+                    }
                 }
             },
             Ok(false) =>
