@@ -27,7 +27,7 @@ use alloc_cortex_m::CortexMHeap;
 use core::fmt::Write;
 use cortex_m_semihosting::hio;
 
-use smoltcp::time::Instant;
+use smoltcp::time::{Duration, Instant};
 use smoltcp::wire::{EthernetAddress, IpAddress, IpCidr,
                     Ipv4Address};
 use smoltcp::iface::{NeighborCache, EthernetInterfaceBuilder};
@@ -137,6 +137,7 @@ fn main() {
                             writeln!(stdout, "TCP listen error: {:?}", e)
                         })
                         .unwrap();
+                    socket.set_timeout(Some(Duration::from_millis(500)));
                 }
 
                 if socket.can_send() {
