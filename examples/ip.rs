@@ -15,6 +15,8 @@ extern crate stm32f4x9_eth as eth;
 extern crate smoltcp;
 extern crate log;
 
+use core::fmt;
+
 use cortex_m::asm;
 use board::{Peripherals, CorePeripherals, SYST};
 
@@ -54,6 +56,12 @@ impl log::Log for HioLogger {
     fn flush(&self) {}
 }
 
+struct DummyLog {}
+
+impl fmt::Write for DummyLog {
+    fn write_str(&mut self, _: &str) -> fmt::Result { Ok(()) }
+}
+
 const SRC_MAC: [u8; 6] = [0x00, 0x00, 0xDE, 0xAD, 0xBE, 0xEF];
 
 static TIME: Mutex<RefCell<u64>> = Mutex::new(RefCell::new(0));
@@ -80,7 +88,7 @@ fn main() {
     log::set_max_level(LevelFilter::Info);
     
     let heap_size = init_alloc();
-    let mut stdout = hio::hstdout().unwrap();
+    let mut stdout = DummyLog{}; //hio::hstdout().unwrap();
     writeln!(stdout, "Heap: {} bytes", heap_size).unwrap();
 
     let p = Peripherals::take().unwrap();
