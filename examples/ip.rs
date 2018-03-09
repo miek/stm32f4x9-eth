@@ -104,14 +104,16 @@ fn main() {
     let eth = Eth::new(p.ETHERNET_MAC, p.ETHERNET_DMA, 32);
     eth.enable_interrupt(&mut cp.NVIC);
 
-    let local_addr = Ipv4Address::new(10, 0, 0, 1);
-    let ip_addr = IpCidr::new(IpAddress::from(local_addr), 24);
+    let local_addr = Ipv4Address::new(185, 194, 112, 246);
+    let ip_addr = IpCidr::new(IpAddress::from(local_addr), 29);
     let neighbor_cache = NeighborCache::new(BTreeMap::new());
     let ethernet_addr = EthernetAddress(SRC_MAC);
+    let default_v4_gw = Ipv4Address::new(185, 194, 112, 241);
     let mut iface = EthernetInterfaceBuilder::new(eth)
         .ethernet_addr(ethernet_addr)
         .ip_addrs([ip_addr])
         .neighbor_cache(neighbor_cache)
+        .ipv4_gateway(default_v4_gw)
         .finalize();
 
     let mut sockets = SocketSet::new(vec![]);
