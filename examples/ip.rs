@@ -94,6 +94,9 @@ fn main() {
     let p = Peripherals::take().unwrap();
     let mut cp = CorePeripherals::take().unwrap();
 
+    p.RCC.ahb1enr.write(|w| w.gpioben().set_bit());
+    p.GPIOB.moder.modify(|_, w| unsafe{ w.moder7().bits(0b01) });
+
     setup_systick(&mut cp.SYST);
 
     writeln!(stdout, "Enabling ethernet...").unwrap();
@@ -135,6 +138,7 @@ fn main() {
                 }
 
                 if socket.can_send() {
+                    p.GPIOB.odr.write(|w| w.odr7().set_bit());
                     write!(socket, "hello\n")
                         .map(|_| {
                             socket.close();
@@ -143,6 +147,7 @@ fn main() {
                             writeln!(stdout, "TCP send error: {:?}", e)
                         })
                         .unwrap();
+                    p.GPIOB.odr.write(|w| w.odr7().clear_bit());
                 }
             },
             Ok(false) =>
