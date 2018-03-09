@@ -141,7 +141,7 @@ fn main() {
 
                 if socket.can_send() {
                     p.GPIOB.odr.write(|w| w.odr7().set_bit());
-                    write!(socket, "hello\n")
+                    write!(socket, r#"<html>hello from mike's microcontroller<br />i am running rust and serving you this page :^)<br /><img src="https://i.imgur.com/XF94Hgv.jpg" /><br /><br />Source code: <a href="https://github.com/astro/stm32f4x9-eth">https://github.com/astro/stm32f4x9-eth</a></html>"#)
                         .map(|_| {
                             socket.close();
                         })
